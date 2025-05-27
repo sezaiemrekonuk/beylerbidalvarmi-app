@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { unstable_cache as cache } from 'next/cache';
 import { collection, query, where, orderBy, getDocs, Timestamp, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -44,8 +44,8 @@ const getCachedUserActivity = cache(
   { revalidate: 120 } // Revalidate every 120 seconds
 );
 
-export async function GET(request: Request, context: { params: { userId: string } }) {
-  const userId = context.params.userId;
+export async function GET(request: NextRequest) {
+  const userId = request.nextUrl.pathname.split('/').pop();
   if (!userId) {
     return NextResponse.json({ message: 'User ID is required' }, { status: 400 });
   }

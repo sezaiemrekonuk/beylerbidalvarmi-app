@@ -45,8 +45,8 @@ export function ChatRoomSelection({ rooms = placeholderRooms, onRoomSelect, isLo
     return (
         <Card className="w-full max-w-md mx-auto">
             <CardHeader>
-                <CardTitle>No Chat Rooms Available</CardTitle>
-                <CardDescription>There are currently no chat rooms. Check back later or create one if you are an admin.</CardDescription>
+                <CardTitle>Sohbet Odası Bulunamadı</CardTitle>
+                <CardDescription>Şu anda kullanılabilir sohbet odası yok. Daha sonra tekrar kontrol edin veya yöneticiyseniz bir oda oluşturun.</CardDescription>
             </CardHeader>
         </Card>
     );
@@ -55,13 +55,13 @@ export function ChatRoomSelection({ rooms = placeholderRooms, onRoomSelect, isLo
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle>Select a Chat Room</CardTitle>
-        <CardDescription>Choose a room to start chatting.</CardDescription>
+        <CardTitle>Bir Sohbet Odası Seçin</CardTitle>
+        <CardDescription>Sohbete başlamak için bir oda seçin.</CardDescription>
       </CardHeader>
       <CardContent>
         <Select onValueChange={handleRoomChange} value={selectedRoomId}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select a room" />
+            <SelectValue placeholder="Bir oda seçin" />
           </SelectTrigger>
           <SelectContent>
             {rooms.map((room) => (

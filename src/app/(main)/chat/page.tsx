@@ -25,7 +25,7 @@ import { ArrowLeft } from 'lucide-react';
 // Define a default or loading user state that matches ChatUser structure
 const loadingUser: ChatUser = {
   id: 'loading',
-  name: 'Loading...',
+  name: 'Yükleniyor...', // Turkish: Loading...
 };
 
 export default function ChatPage() {
@@ -50,7 +50,7 @@ export default function ChatPage() {
       setAvailableRooms(rooms);
       setIsLoadingRooms(false);
     }, (error) => {
-      console.error("Error fetching chat rooms: ", error);
+      console.error("Sohbet odaları çekilirken hata: ", error); // Turkish console
       // Handle error appropriately, e.g., show a toast
       setIsLoadingRooms(false);
     });
@@ -85,7 +85,7 @@ export default function ChatPage() {
           } as ChatMessage); // Cast to ChatMessage to ensure type conformity
         } else {
           // Log an error or handle messages with missing/invalid timestamps
-          console.warn(`Message document with ID ${doc.id} in room ${selectedRoom?.id} has an invalid or missing timestamp.`, data);
+          console.warn(`${selectedRoom?.id} odasındaki ${doc.id} ID'li mesaj belgesinde geçersiz veya eksik zaman damgası var.`, data); // Turkish console
           // Optionally, filter out this message or push it with a clearly identifiable invalid state
           // For now, we are filtering it out to prevent rendering issues.
         }
@@ -93,7 +93,7 @@ export default function ChatPage() {
       setMessages(fetchedMessages);
       setIsLoadingMessages(false);
     }, (error) => {
-      console.error(`Error fetching messages for room ${selectedRoom.name}: `, error);
+      console.error(`${selectedRoom?.name} odası için mesajlar çekilirken hata: `, error); // Turkish console
       // Handle error
       setIsLoadingMessages(false);
     });
@@ -105,9 +105,9 @@ export default function ChatPage() {
     const room = availableRooms.find(r => r.id === roomId);
     if (room) {
       setSelectedRoom(room);
-      console.log(`Selected room: ${room.name}`);
+      console.log(`Seçilen oda: ${room.name}`); // Turkish console
     } else {
-      console.error(`Room with id ${roomId} not found.`);
+      console.error(`${roomId} ID'li oda bulunamadı.`); // Turkish console
       setSelectedRoom(null);
     }
   };
@@ -117,7 +117,7 @@ export default function ChatPage() {
 
     const currentChatUser: ChatUser = {
         id: firebaseUser.uid, // Use Firebase auth UID
-        name: appUser.name || 'Anonymous User', // Fallback name
+        name: appUser.name || 'Bilinmeyen Kullanıcı', // Turkish: Anonymous User
         avatarUrl: appUser.profilePhotoUrl || undefined,
     };
 
@@ -129,9 +129,9 @@ export default function ChatPage() {
         text: messageText.trim(),
         timestamp: serverTimestamp(),
       });
-      console.log(`Message sent to room ${selectedRoom.name}: ${messageText}`);
+      console.log(`${selectedRoom.name} odasına mesaj gönderildi: ${messageText}`); // Turkish console
     } catch (error) {
-      console.error("Error sending message: ", error);
+      console.error("Mesaj gönderilirken hata: ", error); // Turkish console
       // Handle error, e.g., show a toast to the user
     }
   };
@@ -145,10 +145,10 @@ export default function ChatPage() {
   // Fallback to a loading state if appUser isn't available yet but auth is loading
   const currentUserForChat: ChatUser = appUser 
     ? { id: firebaseUser?.uid || 'unknown', name: appUser.name, avatarUrl: appUser.profilePhotoUrl }
-    : (authLoading ? loadingUser : { id: 'guest', name: 'Guest' }); // Or handle guest/unauthenticated state differently
+    : (authLoading ? loadingUser : { id: 'guest', name: 'Misafir', avatarUrl: undefined }); // Turkish: Guest
 
   if (authLoading && !appUser) {
-    return <div className="flex items-center justify-center h-screen"><p>Loading user data...</p></div>;
+    return <div className="flex items-center justify-center h-screen"><p>Kullanıcı verileri yükleniyor...</p></div>; // Turkish
   }
   
   if (!firebaseUser || !appUser) { // Ensure firebaseUser and appUser are loaded and exist
@@ -157,7 +157,7 @@ export default function ChatPage() {
       // but ChatPage itself requires an authenticated appUser to function fully.
       return (
         <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
-            <p className="mb-4">Please log in to use the chat.</p>
+            <p className="mb-4">Sohbeti kullanmak için lütfen giriş yapın.</p> {/* Turkish */}
             {/* Optionally, add a login button or rely on global auth handling */}
         </div>
     );
@@ -174,8 +174,8 @@ export default function ChatPage() {
       ) : (
         <>
             <Button onClick={handleLeaveRoom} variant="outline" className="mb-4 self-start">
-                <ArrowLeft size={16} className="mr-2" /> Back to Rooms
-            </Button>
+                <ArrowLeft size={16} className="mr-2" /> Odalara Geri Dön
+            </Button> {/* Turkish */}
             <ChatInterface
               room={selectedRoom}
               currentUser={currentUserForChat} 

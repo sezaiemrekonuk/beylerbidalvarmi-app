@@ -58,7 +58,7 @@ export function ChatInterface({
             </div>
           ) : messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
-              <p className="text-muted-foreground">No messages yet. Be the first to say something!</p>
+              <p className="text-muted-foreground">Henüz mesaj yok. İlk mesajı sen gönder!</p>
             </div>
           ) : (
             messages.map((msg) => (
@@ -76,7 +76,7 @@ export function ChatInterface({
         <form onSubmit={handleSendMessage} className="flex w-full items-center space-x-2">
           <Input
             type="text"
-            placeholder={`Message #${room.name}...`}
+            placeholder={`${room.name} odasına mesaj yaz...`}
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             className="flex-1"
@@ -85,7 +85,7 @@ export function ChatInterface({
           />
           <Button type="submit" size="icon" disabled={!newMessage.trim() || isLoadingMessages}>
             <SendHorizontal className="h-4 w-4" />
-            <span className="sr-only">Send</span>
+            <span className="sr-only">Gönder</span>
           </Button>
         </form>
       </CardFooter>

@@ -73,13 +73,22 @@ export default function ChatPage() {
       const fetchedMessages: ChatMessage[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        fetchedMessages.push({
-          id: doc.id,
-          ...data,
-          // Ensure timestamp is a Firestore Timestamp object for type consistency internally
-          // Firestore returns its Timestamp type, so direct assignment is fine if types match
-          timestamp: data.timestamp as Timestamp 
-        } as ChatMessage);
+        // Rigorous check for timestamp before pushing
+        if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+          fetchedMessages.push({
+            id: doc.id,
+            // Ensure all necessary fields from ChatMessage type are mapped
+            roomId: data.roomId as string,
+            sender: data.sender as ChatUser, // Assuming ChatUser is the type for sender
+            text: data.text as string,
+            timestamp: data.timestamp as Timestamp // Firestore data.timestamp is already a Timestamp object
+          } as ChatMessage); // Cast to ChatMessage to ensure type conformity
+        } else {
+          // Log an error or handle messages with missing/invalid timestamps
+          console.warn(`Message document with ID ${doc.id} in room ${selectedRoom?.id} has an invalid or missing timestamp.`, data);
+          // Optionally, filter out this message or push it with a clearly identifiable invalid state
+          // For now, we are filtering it out to prevent rendering issues.
+        }
       });
       setMessages(fetchedMessages);
       setIsLoadingMessages(false);

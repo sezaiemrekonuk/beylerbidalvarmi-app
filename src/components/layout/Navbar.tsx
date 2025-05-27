@@ -46,19 +46,19 @@ export default function Navbar() {
           )}
         </div>
         <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2">
-          <Button onClick={() => router.push('/ads/create')} className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <Button onClick={() => router.push('/ads/create')} variant={"default"}>
             <PlusCircle size={18} className="mr-2" /> Yeni İlan Ver
           </Button>
-          <Button onClick={() => router.push('/my-activity')} variant="outline" className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
+          <Button onClick={() => router.push('/my-activity')} variant="outline">
             <ListChecks size={18} className="mr-2" /> Hareketlerim
           </Button>
-          <Button onClick={() => router.push('/chat')} variant="outline" className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
+          <Button onClick={() => router.push('/chat')} variant="outline" >
             <MessageSquare size={18} className="mr-2" /> Sohbet
           </Button>
-          <Button onClick={() => router.push('/profile')} variant="outline" className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
+          <Button onClick={() => router.push('/profile')} variant="outline" >
             <User size={18} className="mr-2" /> Profil
           </Button>
-          <Button onClick={handleLogout} variant="destructive" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <Button onClick={handleLogout} variant="destructive" >
             <LogOut size={18} className="mr-2"/> Çıkış Yap
           </Button>
         </div>

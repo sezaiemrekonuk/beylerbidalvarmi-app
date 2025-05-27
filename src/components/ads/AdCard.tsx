@@ -9,7 +9,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useEffect, useState } from "react";
 import { Timestamp } from "firebase/firestore"; // Import Timestamp
-import { Clock, Edit3, Trash2, MessageSquare, AlertTriangle } from 'lucide-react'; // Added icons
+import { Clock, Edit3, Trash2, MessageSquare, AlertTriangle, ChevronRight, UserCircle } from 'lucide-react'; // Added icons
 import { fetchAdUserDetailsWithCache } from '@/lib/userCache'; // Import the caching function
 
 interface AdCardProps {
@@ -18,6 +18,8 @@ interface AdCardProps {
   onReport: (adId: string, reportedUserId: string) => void;
   onEdit?: (adId: string) => void;
   onDelete?: (adId: string) => void;
+  showRespondButton?: boolean;
+  showReportButton?: boolean;
 }
 
 function timeAgo(timestamp: Timestamp | Date, toFuture: boolean = false): string {
@@ -54,7 +56,7 @@ function timeAgo(timestamp: Timestamp | Date, toFuture: boolean = false): string
     return toFuture ? 'süresi doluyor' : 'az önce';
 }
 
-export default function AdCard({ ad, onRespond, onReport, onEdit, onDelete }: AdCardProps) {
+export default function AdCard({ ad, onRespond, onReport, onEdit, onDelete, showRespondButton, showReportButton }: AdCardProps) {
   const { user: currentUser, appUser: currentAppUser } = useAuth();
   const [adUser, setAdUser] = useState<AppUser | null>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
@@ -86,79 +88,74 @@ export default function AdCard({ ad, onRespond, onReport, onEdit, onDelete }: Ad
   // Skeleton Loader for AdCard
   if (isLoadingUser) { // Show skeleton if ad user is loading OR if adUser is null and not an error case (though fallback should prevent this)
     return (
-      <Card className="w-full max-w-md animate-pulse bg-card border-border shadow-md flex flex-col justify-between">
-        <CardHeader className="flex flex-row items-center space-x-3 p-4">
-            <div className="h-10 w-10 rounded-full bg-muted"></div>
-            <div>
-                <div className="h-4 w-32 bg-muted rounded"></div>
-                <div className="h-3 w-24 bg-muted rounded mt-1"></div>
+      <Card className="w-full animate-pulse bg-card border-border shadow-sm flex flex-row justify-between items-center p-3">
+        <div className="flex items-center space-x-3 flex-grow">
+            <div className="h-10 w-10 rounded-full bg-muted flex-shrink-0"></div>
+            <div className="space-y-1.5 flex-grow">
+                <div className="h-4 w-3/4 bg-muted rounded"></div>
+                <div className="h-3 w-1/2 bg-muted rounded"></div>
             </div>
-        </CardHeader>
-        <CardContent className="space-y-3 p-4">
-            <div className="h-4 bg-muted rounded w-3/4"></div>
-            <div className="h-4 bg-muted rounded w-1/2"></div>
-            <div className="h-4 bg-muted rounded w-full mt-2"></div> {/* Placeholder for message */}
-            <div className="flex justify-between mt-3">
-              <div className="h-3 bg-muted rounded w-1/3"></div>
-              <div className="h-3 bg-muted rounded w-1/4"></div>
-            </div>
-        </CardContent>
-        <CardFooter className="flex justify-end space-x-2 p-4 pt-3">
-            <div className="h-9 w-24 bg-muted rounded"></div>
-            <div className="h-9 w-24 bg-muted rounded"></div>
-        </CardFooter>
+        </div>
+        <div className="h-8 w-20 bg-muted rounded ml-3 flex-shrink-0"></div>
       </Card>
     );
   }
 
   if (!adUser) { // Should ideally not be hit if skeleton and fallbacks work
-      return <Card className="w-full max-w-md bg-card border-border p-4 text-center text-destructive">Kullanıcı bilgileri yüklenemedi.</Card>;
+      return <Card className="w-full bg-card border-border p-3 text-center text-destructive">Kullanıcı bilgileri yüklenemedi.</Card>;
   }
 
   const cardBorderColor = currentAppUser?.universityDomain === adUser.universityDomain 
-    ? "border-primary/50 shadow-lg" 
-    : "border-border shadow-md";
+    ? "border-primary/40 hover:border-primary/70" 
+    : "border-border hover:border-muted-foreground/30";
 
   return (
-    <Card className={`w-full max-w-md flex flex-col justify-between bg-card ${cardBorderColor} hover:shadow-lg transition-shadow duration-300 overflow-hidden rounded-lg`}>
-      <div>
-        <CardHeader className="flex flex-row items-center space-x-3 p-4 border-b border-border/70">
-          <Avatar className="h-12 w-12 border-2 border-primary/20 flex-shrink-0">
-            <AvatarImage src={adUser.profilePhotoUrl || undefined} alt={adUser.name || "Kullanıcı"} />
-            <AvatarFallback className="bg-muted text-muted-foreground text-lg">{adUser.name?.charAt(0).toUpperCase() || 'K'}</AvatarFallback>
-          </Avatar>
-          <div className="overflow-hidden">
-            <CardTitle className="text-sm font-semibold text-foreground truncate" title={adUser.name || "Kullanıcı Adı Yok"}>{adUser.name || "Kullanıcı Adı Yok"}</CardTitle>
-            <p className="text-xs text-muted-foreground truncate" title={adUser.universityDomain || "Üniversite Bilgisi Yok"}>{adUser.universityDomain || "Üniversite Bilgisi Yok"}</p>
+    <Card className={`w-full flex flex-col sm:flex-row items-stretch bg-card ${cardBorderColor} shadow-sm hover:shadow-md transition-all duration-200 rounded-lg overflow-hidden border`}>
+      {/* User Info & Ad Details Section */}
+      <div className="flex-grow flex flex-col sm:flex-row items-start sm:items-center p-3 sm:p-4 border-b sm:border-b-0 sm:border-r border-border/70">
+        <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border border-primary/20 flex-shrink-0 mb-2 sm:mb-0 sm:mr-4">
+          <AvatarImage src={adUser.profilePhotoUrl || undefined} alt={adUser.name || "Kullanıcı"} />
+          <AvatarFallback className="bg-muted text-muted-foreground">
+            {adUser.name ? adUser.name.charAt(0).toUpperCase() : <UserCircle size={20} />}
+          </AvatarFallback>
+        </Avatar>
+        
+        <div className="flex-grow min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground truncate" title={adUser.universityDomain || "Üniversite Bilgisi Yok"}>
+                {adUser.universityDomain || "Üniversite Bilgisi Yok"}
+              </p>
+              <CardTitle className="text-sm font-semibold text-foreground truncate" title={adUser.name || "Kullanıcı Adı Yok"}>
+                {adUser.name || "Kullanıcı Adı Yok"}
+              </CardTitle>
+            </div>
+            <div className={`text-xs mt-1 sm:mt-0 sm:ml-2 flex items-center flex-shrink-0 ${isExpired ? 'text-destructive' : 'text-green-600 dark:text-green-500'}`}>
+              <Clock size={13} className="mr-1 flex-shrink-0" />
+              {expirationText}
+            </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-4 space-y-2">
-          <div>
-            <span className="font-medium text-xs text-primary/90 block">İSTİYOR:</span>
-            <p className="text-sm text-foreground leading-snug ml-1 truncate" title={ad.requested}>{ad.requested}</p>
+
+          <div className="mt-1.5 space-y-0.5">
+            <p className="text-xs text-foreground leading-tight truncate" title={ad.requested}>
+              <span className="font-medium text-primary/90">İstiyor:</span> {ad.requested}
+            </p>
+            <p className="text-xs text-foreground leading-tight truncate" title={ad.offered}>
+              <span className="font-medium text-primary/90">Teklifi:</span> {ad.offered}
+            </p>
           </div>
-          <div>
-            <span className="font-medium text-xs text-primary/90 block">TEKLİFİ:</span>
-            <p className="text-sm text-foreground leading-snug ml-1 truncate" title={ad.offered}>{ad.offered}</p>
-          </div>
-          
+
           {ad.message && (
-            <p className="text-sm text-foreground bg-accent/40 dark:bg-accent/20 p-2 rounded-md mt-2 italic line-clamp-2" title={ad.message}>
+            <p className="text-xs text-muted-foreground bg-accent/30 dark:bg-accent/20 p-1.5 rounded-md mt-1.5 italic line-clamp-1" title={ad.message}>
               &ldquo;{ad.message}&rdquo;
             </p>
           )}
-
-          <div className="text-xs text-muted-foreground pt-2 flex flex-row justify-between items-center">
-            <span>Yayınlanma: {postedDateText}</span>
-            <span className={`flex items-center font-medium ${isExpired ? 'text-destructive' : 'text-green-600 dark:text-green-500'}`}>
-                <Clock size={13} className="mr-1 flex-shrink-0" />
-                {expirationText}
-            </span>
-          </div>
-        </CardContent>
+        </div>
       </div>
-      <CardFooter className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2 p-4 border-t border-border/50 mt-auto">
-        {!isOwnAd && !isExpired && (
+
+      {/* Actions Section - Reverted to CardFooter with original button styles */}
+      <CardFooter className="flex flex-col sm:flex-row justify-end items-stretch sm:items-center gap-2 p-4 border-t border-border/50 flex-shrink-0">
+        {(typeof showRespondButton === 'boolean' ? showRespondButton : (!isOwnAd && !isExpired)) && (
           <Button variant="default" size="sm" onClick={() => onRespond(ad.id)} className="flex-grow sm:flex-grow-0 bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto">
             <MessageSquare size={16} className="mr-2"/> Yanıt Ver
           </Button>
@@ -168,18 +165,18 @@ export default function AdCard({ ad, onRespond, onReport, onEdit, onDelete }: Ad
             <Edit3 size={16} className="mr-1.5"/> Düzenle
           </Button>
         )}
-        {!isOwnAd && (
+        {(typeof showReportButton === 'boolean' ? showReportButton : !isOwnAd) && (
            <Button variant="ghost" size="sm" onClick={() => onReport(ad.id, ad.userId)} className="flex-grow sm:flex-grow-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive w-full sm:w-auto">
             <AlertTriangle size={16} className="mr-1.5"/> Rapor Et
           </Button>
         )}
-        {isOwnAd && !isExpired && onDelete && (
-          <Button variant="destructive" size="sm" onClick={() => onDelete(ad.id)} className="flex-grow sm:flex-grow-0 bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto">
+        {isOwnAd && !isExpired && onDelete && ( // Restored !isExpired check
+          <Button variant="destructive" size="sm" onClick={() => onDelete(ad.id)} className="flex-grow sm:flex-grow-0 w-full sm:w-auto">
             <Trash2 size={16} className="mr-1.5"/> Sil
           </Button>
         )}
-        {isExpired && (
-            <p className="text-sm text-destructive font-medium w-full text-center sm:text-right">Bu ilanın süresi dolmuş.</p>
+         {isExpired && (
+            <p className="text-sm text-destructive font-medium w-full text-center sm:text-right">Süresi Doldu</p>
         )}
       </CardFooter>
     </Card>

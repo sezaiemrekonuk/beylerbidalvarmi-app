@@ -11,7 +11,7 @@ export default function MainLayout({
 }) {
   return (
     <ProtectedRoute>
-      <div className="h-screen overflow-hidden flex flex-col">
+      <div className="overflow-hidden flex flex-col">
         <Navbar />
         <main className="flex-grow overflow-hidden container mx-auto p-4 sm:p-6 lg:p-8 w-full flex flex-col">
           {/* The children (e.g., ChatPage) will need to be h-full to fill this main area */}

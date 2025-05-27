@@ -195,10 +195,10 @@ export default function MyActivityPage() {
             Hemen bir ilan vererek takas yapmaya başlayın!
         </p>
         <div className="flex flex-col sm:flex-row gap-3 mt-6">
-            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button asChild variant={"default"}>
               <Link href="/ads/create"><PlusCircle size={18} className="mr-2"/> Yeni İlan Ver</Link>
             </Button>
-            <Button variant="outline" asChild className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
+            <Button variant="outline" asChild>
               <Link href="/"><ChevronLeft size={18} className="mr-2"/>Tüm İlanlara Dön</Link>
             </Button>
         </div>
@@ -214,7 +214,7 @@ export default function MyActivityPage() {
             <Button variant="outline" asChild className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
               <Link href="/"><ChevronLeft size={18} className="mr-2"/>Tüm İlanlara Dön</Link>
             </Button>
-             <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+             <Button asChild variant={"default"}>
               <Link href="/ads/create"><PlusCircle size={18} className="mr-2"/> Yeni İlan Ver</Link>
             </Button>
         </div>

@@ -1,26 +1,16 @@
 'use client';
 
-import * as React from 'react';
-import { ChatRoomSelection } from '@/components/chat/ChatRoomSelection';
-import { ChatInterface } from '@/components/chat/ChatInterface';
-import { ChatRoom, ChatMessage, User as ChatUser } from '@/lib/chat-types'; // Renamed User to ChatUser to avoid conflict
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  addDoc,
-  serverTimestamp,
-  Timestamp, // Import Timestamp for type checking
-  getDocs, // For fetching initial rooms
-  doc, // For message subcollection path
-  where, // Potentially for querying rooms if needed
-  limit // Potentially for paginating messages
-} from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, onSnapshot, Timestamp, addDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { ChatRoom, ChatMessage as MessageType, User as ChatUser } from '@/lib/chat-types';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { ChatRoomSelection } from '@/components/chat/ChatRoomSelection';
+import { ChatInterface } from '@/components/chat/ChatInterface';
+import { ChevronLeft } from 'lucide-react';
 
 // Define a default or loading user state that matches ChatUser structure
 const loadingUser: ChatUser = {
@@ -29,163 +19,181 @@ const loadingUser: ChatUser = {
 };
 
 export default function ChatPage() {
-  const { appUser, user: firebaseUser, loading: authLoading } = useAuth();
-  const [selectedRoom, setSelectedRoom] = React.useState<ChatRoom | null>(null);
-  const [messages, setMessages] = React.useState<ChatMessage[]>([]);
-  const [availableRooms, setAvailableRooms] = React.useState<ChatRoom[]>([]);
-  const [isLoadingRooms, setIsLoadingRooms] = React.useState(true);
-  const [isLoadingMessages, setIsLoadingMessages] = React.useState(false);
+  const { user, appUser, loading: authLoading, isEmailVerified } = useAuth();
+  const [selectedChatRoomId, setSelectedChatRoomId] = useState<string | null>(null);
+  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([]);
+  const [messages, setMessages] = useState<MessageType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch chat rooms from Firestore
-  React.useEffect(() => {
-    setIsLoadingRooms(true);
+  // Fetch chat rooms for the current user
+  useEffect(() => {
+    setIsLoading(true);
     const roomsCollectionRef = collection(db, 'chatRooms');
-    const q = query(roomsCollectionRef, orderBy('name', 'asc')); // Order rooms by name
+    const q = query(roomsCollectionRef, orderBy('name', 'asc'));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const rooms: ChatRoom[] = [];
       querySnapshot.forEach((doc) => {
         rooms.push({ id: doc.id, ...doc.data() } as ChatRoom);
       });
-      setAvailableRooms(rooms);
-      setIsLoadingRooms(false);
-    }, (error) => {
-      console.error("Sohbet odaları çekilirken hata: ", error); // Turkish console
-      // Handle error appropriately, e.g., show a toast
-      setIsLoadingRooms(false);
+      setChatRooms(rooms);
+      setIsLoading(false);
+    }, (err) => {
+      console.error("Sohbet odaları çekilirken hata: ", err);
+      setError("Sohbet odaları yüklenemedi.");
+      setIsLoading(false);
     });
 
-    return () => unsubscribe(); // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   // Fetch messages for the selected room
-  React.useEffect(() => {
-    if (!selectedRoom) {
+  useEffect(() => {
+    if (!selectedChatRoomId) {
       setMessages([]);
       return;
     }
 
     setIsLoadingMessages(true);
-    const messagesCollectionRef = collection(db, `chatRooms/${selectedRoom.id}/messages`);
-    const q = query(messagesCollectionRef, orderBy('timestamp', 'asc'), limit(50)); // Get last 50, order by time
+    const messagesCollectionRef = collection(db, `chatRooms/${selectedChatRoomId}/messages`);
+    const q_messages = query(messagesCollectionRef, orderBy('timestamp', 'asc'), limit(50));
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const fetchedMessages: ChatMessage[] = [];
+    const unsubscribeMessages = onSnapshot(q_messages, (querySnapshot) => {
+      const fetchedMessages: MessageType[] = [];
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        // Rigorous check for timestamp before pushing
         if (data.timestamp && typeof data.timestamp.toDate === 'function') {
           fetchedMessages.push({
             id: doc.id,
-            // Ensure all necessary fields from ChatMessage type are mapped
             roomId: data.roomId as string,
-            sender: data.sender as ChatUser, // Assuming ChatUser is the type for sender
+            sender: data.sender as ChatUser,
             text: data.text as string,
-            timestamp: data.timestamp as Timestamp // Firestore data.timestamp is already a Timestamp object
-          } as ChatMessage); // Cast to ChatMessage to ensure type conformity
+            timestamp: data.timestamp as Timestamp,
+          } as MessageType);
         } else {
-          // Log an error or handle messages with missing/invalid timestamps
-          console.warn(`${selectedRoom?.id} odasındaki ${doc.id} ID'li mesaj belgesinde geçersiz veya eksik zaman damgası var.`, data); // Turkish console
-          // Optionally, filter out this message or push it with a clearly identifiable invalid state
-          // For now, we are filtering it out to prevent rendering issues.
+          console.warn(`Mesajda geçersiz zaman damgası: ${doc.id}`, data);
         }
       });
       setMessages(fetchedMessages);
       setIsLoadingMessages(false);
-    }, (error) => {
-      console.error(`${selectedRoom?.name} odası için mesajlar çekilirken hata: `, error); // Turkish console
-      // Handle error
+    }, (err) => {
+      console.error(`${selectedChatRoomId} için mesajlar çekilirken hata: `, err);
       setIsLoadingMessages(false);
     });
 
-    return () => unsubscribe();
-  }, [selectedRoom]);
+    return () => unsubscribeMessages();
+  }, [selectedChatRoomId]);
+
+  useEffect(() => {
+    const calculateMaxHeight = () => {
+      if (chatContainerRef.current) {
+        const navbarElement = document.querySelector('header');
+        const navbarHeight = navbarElement ? navbarElement.offsetHeight : 0;
+        const screenHeight = window.innerHeight;
+        const calculatedHeight = screenHeight - navbarHeight;
+        chatContainerRef.current.style.height = `${Math.max(calculatedHeight, 300)}px`;
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      calculateMaxHeight();
+      window.addEventListener('resize', calculateMaxHeight);
+      return () => {
+        window.removeEventListener('resize', calculateMaxHeight);
+      };
+    }
+  }, [selectedChatRoomId]);
 
   const handleRoomSelect = (roomId: string) => {
-    const room = availableRooms.find(r => r.id === roomId);
+    const room = chatRooms.find(r => r.id === roomId);
     if (room) {
-      setSelectedRoom(room);
-      console.log(`Seçilen oda: ${room.name}`); // Turkish console
+      setSelectedChatRoomId(room.id);
     } else {
-      console.error(`${roomId} ID'li oda bulunamadı.`); // Turkish console
-      setSelectedRoom(null);
+      setSelectedChatRoomId(null);
     }
   };
 
   const handleSendMessage = async (messageText: string) => {
-    if (!selectedRoom || !appUser || !firebaseUser || messageText.trim() === '') return;
+    if (!selectedChatRoomId || !appUser || !user || messageText.trim() === '') return;
 
     const currentChatUser: ChatUser = {
-        id: firebaseUser.uid, // Use Firebase auth UID
-        name: appUser.name || 'Bilinmeyen Kullanıcı', // Turkish: Anonymous User
-        avatarUrl: appUser.profilePhotoUrl || undefined,
+      id: user.uid,
+      name: appUser.name || 'Bilinmeyen Kullanıcı',
+      avatarUrl: appUser.profilePhotoUrl || undefined,
     };
 
     try {
-      const messagesCollectionRef = collection(db, `chatRooms/${selectedRoom.id}/messages`);
+      const messagesCollectionRef = collection(db, `chatRooms/${selectedChatRoomId}/messages`);
       await addDoc(messagesCollectionRef, {
-        roomId: selectedRoom.id,
-        sender: currentChatUser, // Store simplified user object
+        roomId: selectedChatRoomId,
+        sender: currentChatUser,
         text: messageText.trim(),
         timestamp: serverTimestamp(),
       });
-      console.log(`${selectedRoom.name} odasına mesaj gönderildi: ${messageText}`); // Turkish console
-    } catch (error) {
-      console.error("Mesaj gönderilirken hata: ", error); // Turkish console
-      // Handle error, e.g., show a toast to the user
+    } catch (err) {
+      console.error("Mesaj gönderilirken hata: ", err);
     }
   };
-  
+
   const handleLeaveRoom = () => {
-    setSelectedRoom(null);
-    setMessages([]); // Clear messages when leaving a room
+    setSelectedChatRoomId(null);
   };
 
-  // Determine the currentUser for ChatInterface, using appUser data
-  // Fallback to a loading state if appUser isn't available yet but auth is loading
-  const currentUserForChat: ChatUser = appUser 
-    ? { id: firebaseUser?.uid || 'unknown', name: appUser.name, avatarUrl: appUser.profilePhotoUrl }
-    : (authLoading ? loadingUser : { id: 'guest', name: 'Misafir', avatarUrl: undefined }); // Turkish: Guest
+  const currentUserForChat: ChatUser = appUser
+    ? { id: user?.uid || 'unknown', name: appUser.name, avatarUrl: appUser.profilePhotoUrl }
+    : (authLoading ? loadingUser : { id: 'guest', name: 'Misafir', avatarUrl: undefined });
 
   if (authLoading && !appUser) {
-    return <div className="flex items-center justify-center h-screen"><p>Kullanıcı verileri yükleniyor...</p></div>; // Turkish
-  }
-  
-  if (!firebaseUser || !appUser) { // Ensure firebaseUser and appUser are loaded and exist
-      // You might want to redirect to login or show a message
-      // For now, if Navbar handles redirection this might be okay
-      // but ChatPage itself requires an authenticated appUser to function fully.
-      return (
-        <div className="container mx-auto p-4 h-screen flex flex-col items-center justify-center">
-            <p className="mb-4">Sohbeti kullanmak için lütfen giriş yapın.</p> {/* Turkish */}
-            {/* Optionally, add a login button or rely on global auth handling */}
-        </div>
-    );
+    return <div className="flex items-center justify-center min-h-screen bg-background text-muted-foreground">Kullanıcı doğrulanıyor...</div>;
   }
 
+  if (!user || !appUser) {
+    return (
+      <div className="container mx-auto p-4 min-h-screen flex flex-col items-center justify-center text-center bg-background">
+        <ChevronLeft size={64} className="text-muted-foreground mb-4" />
+        <p className="text-xl text-muted-foreground mb-4">Sohbeti kullanmak için lütfen giriş yapın.</p>
+        <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
+          <a href="/login">Giriş Yap</a>
+        </Button>
+      </div>
+    );
+  }
+  
+  const selectedRoomDetails = chatRooms.find(r => r.id === selectedChatRoomId);
+
   return (
-    <div className="h-full flex flex-col items-center">
-      {!selectedRoom ? (
-        <ChatRoomSelection 
-            rooms={availableRooms} 
-            onRoomSelect={handleRoomSelect} 
-            isLoading={isLoadingRooms} 
+    <div ref={chatContainerRef} className="flex flex-col h-screen bg-background overflow-hidden">
+      {!selectedChatRoomId ? (
+        <ChatRoomSelection
+          rooms={chatRooms}
+          onRoomSelect={handleRoomSelect}
+          isLoading={isLoading}
         />
-      ) : (
+      ) : selectedRoomDetails ? ( 
         <div className="w-full flex-grow flex flex-col items-stretch min-h-0">
-            <Button onClick={handleLeaveRoom} variant="outline" className="mb-4 self-start flex-shrink-0">
-                <ArrowLeft size={16} className="mr-2" /> Odalara Geri Dön
+          <div className="p-3 border-b border-border bg-card flex-shrink-0 flex items-center justify-between">
+            <Button onClick={handleLeaveRoom} variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft size={16} className="mr-2" /> Odalara Dön
             </Button>
-            <div className="flex-grow min-h-0">
-                <ChatInterface
-                  room={selectedRoom}
-                  currentUser={currentUserForChat} 
-                  messages={messages} 
-                  onSendMessage={handleSendMessage}
-                  isLoadingMessages={isLoadingMessages}
-                />
-            </div>
+            <h2 className="text-lg font-semibold text-foreground">{selectedRoomDetails.name}</h2>
+            <div className="w-10"></div>
+          </div>
+          <div className="flex-grow min-h-0">
+            <ChatInterface
+              room={selectedRoomDetails}
+              currentUser={currentUserForChat}
+              messages={messages}
+              onSendMessage={handleSendMessage}
+              isLoadingMessages={isLoadingMessages}
+            />
+          </div>
         </div>
+      ) : (
+         <div className="flex items-center justify-center flex-grow text-muted-foreground">Oda bulunamadı veya yükleniyor...</div>
       )}
     </div>
   );

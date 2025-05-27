@@ -5,11 +5,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, query, where, getDocs, doc, Timestamp, orderBy, deleteDoc } from 'firebase/firestore';
 import { Ad, AdResponse, AppUser, FullAdResponse, UserAdWithResponses } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Phone, ChevronLeft, PlusCircle, Edit3, Trash2, MessageCircle, Inbox } from 'lucide-react';
+import { Phone, ChevronLeft, PlusCircle, MessageCircle, Inbox } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,

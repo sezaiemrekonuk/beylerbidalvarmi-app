@@ -25,7 +25,7 @@ import {
     AlertDialogTitle,
   } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
-import { LogOut, PlusCircle, User, ListChecks, MessageSquarePlus, Flag } from 'lucide-react';
+import { LogOut, PlusCircle, User, ListChecks, MessageSquarePlus, Flag, MessageSquare } from 'lucide-react';
 import { fetchAdUserDetailsWithCache } from '@/lib/userCache';
 import { sendAdResponseMessageEmail } from '@/lib/email';
 
@@ -72,6 +72,32 @@ export default function HomePage() {
   const [isDeletingAd, setIsDeletingAd] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  const loadAds = useCallback(async () => {
+    if (user && appUser && isEmailVerified) {
+      setIsLoadingAds(true);
+      setErrorAds(null); // Clear previous errors
+      try {
+        const response = await fetch('/api/ads', { cache: 'no-store' }); // Ensure fresh data
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to fetch ads from API');
+        }
+        let adsData: Ad[] = await response.json();
+        adsData = adsData.map(ad => ({
+          ...ad,
+          createdAt: ad.createdAt instanceof Timestamp ? ad.createdAt : new Timestamp((ad.createdAt as any).seconds, (ad.createdAt as any).nanoseconds),
+          expiresAt: ad.expiresAt instanceof Timestamp ? ad.expiresAt : new Timestamp((ad.expiresAt as any).seconds, (ad.expiresAt as any).nanoseconds),
+        }));
+        setAds(adsData);
+      } catch (error: any) { 
+        console.error("İlanlar çekilirken hata (API call): ", error);
+        setErrorAds(error.message || "İlanlar yüklenirken bir hata oluştu.");
+        toast.error("İlanlar Yüklenemedi", { description: "İlanlar getirilirken bir sorun oluştu. Lütfen sayfayı yenileyin." });
+      }
+      setIsLoadingAds(false);
+    }
+  }, [user, appUser, isEmailVerified, setAds, setIsLoadingAds, setErrorAds]);
+
   const handleLogout = async () => {
     const toastId = toast.loading("Çıkış yapılıyor...");
     try {
@@ -95,31 +121,8 @@ export default function HomePage() {
   }, [user, authLoading, isEmailVerified, router, handleLogout]);
 
   useEffect(() => {
-    const loadAds = async () => {
-      if (user && appUser && isEmailVerified) {
-        setIsLoadingAds(true);
-        try {
-          const response = await fetch('/api/ads');
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to fetch ads from API');
-          }
-          let adsData: Ad[] = await response.json();
-          adsData = adsData.map(ad => ({
-            ...ad,
-            createdAt: ad.createdAt instanceof Timestamp ? ad.createdAt : new Timestamp((ad.createdAt as any).seconds, (ad.createdAt as any).nanoseconds),
-            expiresAt: ad.expiresAt instanceof Timestamp ? ad.expiresAt : new Timestamp((ad.expiresAt as any).seconds, (ad.expiresAt as any).nanoseconds),
-          }));
-          setAds(adsData);
-        } catch (error: any) { 
-          console.error("İlanlar çekilirken hata (API call): ", error);
-          toast.error("İlanlar Yüklenemedi", { description: "İlanlar getirilirken bir sorun oluştu. Lütfen sayfayı yenileyin." });
-        }
-        setIsLoadingAds(false);
-      }
-    };
     loadAds();
-  }, [user, appUser, isEmailVerified]);
+  }, [loadAds]);
 
   const sortedAds = useMemo(() => {
     if (!appUser) return ads;
@@ -303,6 +306,9 @@ export default function HomePage() {
             </Button>
             <Button onClick={() => router.push('/my-activity')} variant="outline" className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
                 <ListChecks size={18} className="mr-2" /> Hareketlerim
+            </Button>
+            <Button onClick={() => router.push('/chat')} variant="outline" className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
+                <MessageSquare size={18} className="mr-2" /> Sohbet
             </Button>
             <Button onClick={() => router.push('/profile')} variant="outline" className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
                 <User size={18} className="mr-2" /> Profil

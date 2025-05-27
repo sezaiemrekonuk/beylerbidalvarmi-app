@@ -1,6 +1,7 @@
 {
     "conventionalCommits.scopes": [
         "firebase",
-        "profile"
+        "profile",
+        "chat"
     ]
 }

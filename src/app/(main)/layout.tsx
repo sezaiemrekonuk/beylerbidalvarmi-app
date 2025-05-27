@@ -1,6 +1,7 @@
 'use client';
 
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import Navbar from '@/components/layout/Navbar';
 import React from 'react';
 
 export default function MainLayout({
@@ -10,8 +11,8 @@ export default function MainLayout({
 }) {
   return (
     <ProtectedRoute>
-      {/* TODO: Add Navbar and Footer here later */}
-      <main>{children}</main>
+      <Navbar />
+      <main className="container mx-auto p-4 sm:p-6 lg:p-8">{children}</main>
     </ProtectedRoute>
   );
 } 

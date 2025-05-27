@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { auth, db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +25,7 @@ import {
     AlertDialogTitle,
   } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
-import { LogOut, PlusCircle, User, ListChecks, MessageSquarePlus, Flag, MessageSquare } from 'lucide-react';
+import { MessageSquarePlus, Flag, PlusCircle } from 'lucide-react';
 import { fetchAdUserDetailsWithCache } from '@/lib/userCache';
 import { sendAdResponseMessageEmail } from '@/lib/email';
 
@@ -98,27 +98,25 @@ export default function HomePage() {
     }
   }, [user, appUser, isEmailVerified, setAds, setIsLoadingAds, setErrorAds]);
 
-  const handleLogout = async () => {
-    const toastId = toast.loading("Çıkış yapılıyor...");
-    try {
-      await signOut(auth);
-      toast.success("Başarıyla çıkış yapıldı.", { id: toastId });
-      router.push('/login');
-    } catch (error: any) {
-      console.error('Çıkış yapılırken hata: ', error);
-      toast.error("Çıkış Yapılamadı", { id: toastId, description: error.message });
-    }
-  };
-
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
     }
     if (!authLoading && user && !isEmailVerified) {
       alert("Devam etmek için lütfen e-postanızı doğrulayın.");
-      handleLogout();
+      (async () => {
+        const toastId = toast.loading("Çıkış yapılıyor...");
+        try {
+          await signOut(auth);
+          toast.success("Başarıyla çıkış yapıldı. Lütfen e-postanızı doğrulayın.", { id: toastId });
+          router.push('/login');
+        } catch (error: any) {
+          console.error('E-posta doğrulanmadığı için çıkış yapılırken hata: ', error);
+          toast.error("Doğrulama Gerekiyor", { id: toastId, description: "Lütfen e-postanızı doğrulayın. Çıkış yapılamadı." });
+        }
+      })();
     }
-  }, [user, authLoading, isEmailVerified, router, handleLogout]);
+  }, [user, authLoading, isEmailVerified, router]);
 
   useEffect(() => {
     loadAds();
@@ -294,31 +292,7 @@ export default function HomePage() {
   }
   
   return (
-    <div className="container mx-auto p-4 sm:p-6 lg:p-8 bg-background min-h-screen">
-      <header className="flex flex-col sm:flex-row justify-between items-center mb-8 pb-6 border-b border-border gap-4">
-        <div className="text-center sm:text-left">
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Hoş Geldin, {appUser.name}!</h1>
-            <p className="text-md text-muted-foreground">Üniversite: {appUser.universityDomain}</p>
-        </div>
-        <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2">
-            <Button onClick={() => router.push('/ads/create')} className="bg-primary text-primary-foreground hover:bg-primary/90">
-                <PlusCircle size={18} className="mr-2" /> Yeni İlan Ver
-            </Button>
-            <Button onClick={() => router.push('/my-activity')} variant="outline" className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
-                <ListChecks size={18} className="mr-2" /> Hareketlerim
-            </Button>
-            <Button onClick={() => router.push('/chat')} variant="outline" className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
-                <MessageSquare size={18} className="mr-2" /> Sohbet
-            </Button>
-            <Button onClick={() => router.push('/profile')} variant="outline" className="border-border hover:bg-accent hover:text-accent-foreground text-accent-foreground">
-                <User size={18} className="mr-2" /> Profil
-            </Button>
-            <Button onClick={handleLogout} variant="destructive" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                <LogOut size={18} className="mr-2"/> Çıkış Yap
-            </Button>
-        </div>
-      </header>
-
+    <div className="bg-background">
       <h2 className="text-2xl font-semibold mb-6 text-foreground">Mevcut Takas İlanları</h2>
       {isLoadingAds ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

@@ -104,5 +104,44 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if false;
     }
+
+    // Chat Rooms Collection
+    match /chatRooms/{roomId} {
+      // Authenticated and email verified users can read chat rooms.
+      allow read: if request.auth != null && request.auth.token.email_verified == true;
+      // For now, let's assume rooms are created by admins or pre-defined.
+      // If you want users to create rooms, you'd add rules here.
+      allow create: if false; // Example: allow create: if isAdmin(request.auth.uid);
+      allow update: if false; // Example: allow update: if isAdmin(request.auth.uid);
+      allow delete: if false; // Example: allow delete: if isAdmin(request.auth.uid);
+
+      // Messages Subcollection within a Chat Room
+      match /messages/{messageId} {
+        // Authenticated and email verified users can read messages in any room they can access.
+        allow read: if request.auth != null && request.auth.token.email_verified == true;
+        // Authenticated and email verified users can create messages.
+        allow create: if request.auth != null && request.auth.token.email_verified == true
+                      // Validate message sender ID matches authenticated user
+                      && request.resource.data.sender.id == request.auth.uid
+                      // Validate roomId in message matches the path
+                      && request.resource.data.roomId == roomId
+                      // Validate message text
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 500 // Max message length
+                      // Validate sender object structure (basic check)
+                      && request.resource.data.sender.name is string
+                      // Ensure server timestamp is used for message creation
+                      && request.resource.data.timestamp == request.time;
+        // Optionally, allow users to update or delete their own messages
+        allow update: if request.auth != null && request.auth.token.email_verified == true
+                      && resource.data.sender.id == request.auth.uid
+                      && request.resource.data.roomId == resource.data.roomId // Cannot change room ID
+                      && request.resource.data.sender.id == resource.data.sender.id; // Cannot change sender
+                      // Add validation for fields that can be updated, e.g., text, updatedAt timestamp
+        allow delete: if request.auth != null && request.auth.token.email_verified == true 
+                      && resource.data.sender.id == request.auth.uid;
+      }
+    }
   }
 } 

@@ -164,7 +164,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 h-[calc(100vh-var(--navbar-height,80px))] flex flex-col items-center">
+    <div className="h-full flex flex-col items-center">
       {!selectedRoom ? (
         <ChatRoomSelection 
             rooms={availableRooms} 
@@ -172,18 +172,20 @@ export default function ChatPage() {
             isLoading={isLoadingRooms} 
         />
       ) : (
-        <>
-            <Button onClick={handleLeaveRoom} variant="outline" className="mb-4 self-start">
+        <div className="w-full flex-grow flex flex-col items-stretch min-h-0">
+            <Button onClick={handleLeaveRoom} variant="outline" className="mb-4 self-start flex-shrink-0">
                 <ArrowLeft size={16} className="mr-2" /> Odalara Geri Dön
-            </Button> {/* Turkish */}
-            <ChatInterface
-              room={selectedRoom}
-              currentUser={currentUserForChat} 
-              messages={messages} 
-              onSendMessage={handleSendMessage}
-              isLoadingMessages={isLoadingMessages}
-            />
-        </>
+            </Button>
+            <div className="flex-grow min-h-0">
+                <ChatInterface
+                  room={selectedRoom}
+                  currentUser={currentUserForChat} 
+                  messages={messages} 
+                  onSendMessage={handleSendMessage}
+                  isLoadingMessages={isLoadingMessages}
+                />
+            </div>
+        </div>
       )}
     </div>
   );

@@ -8,10 +8,11 @@ import { auth } from '@/lib/firebase';
 import { signOut } from 'firebase/auth';
 import { toast } from 'sonner';
 import { LogOut, PlusCircle, User, ListChecks, MessageSquare } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Navbar() {
   const router = useRouter();
-  const { appUser, user } = useAuth(); // Assuming useAuth provides appUser and firebase user
+  const { appUser, user } = useAuth();
 
   const handleLogout = async () => {
     const toastId = toast.loading("Çıkış yapılıyor...");
@@ -25,17 +26,24 @@ export default function Navbar() {
     }
   };
 
-  // Prevent rendering navbar if user is not available, can be adjusted based on app logic
-  if (!appUser || !user) {
+  if (!user) {
     return null; 
   }
 
   return (
-    <header className="bg-background border-b border-border">
+    <header className="bg-background border-b border-border flex-shrink-0">
       <div className="container mx-auto p-4 sm:p-6 lg:p-8 flex flex-col sm:flex-row justify-between items-center gap-4">
         <div className="text-center sm:text-left">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Hoş Geldin, {appUser.name}!</h1>
-          <p className="text-md text-muted-foreground">Üniversite: {appUser.universityDomain}</p>
+          <Link href="/" className="block">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground hover:text-primary transition-colors">
+              Beyler Bi Dal
+            </h1>
+          </Link>
+          {appUser && (
+            <p className="text-sm text-muted-foreground -mt-1">
+              {appUser.name}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap justify-center sm:justify-end items-center gap-2">
           <Button onClick={() => router.push('/ads/create')} className="bg-primary text-primary-foreground hover:bg-primary/90">

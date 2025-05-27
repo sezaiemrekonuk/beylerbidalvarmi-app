@@ -1,5 +1,6 @@
 'use client';
 
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -25,9 +26,15 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { FirebaseError } from 'firebase/app';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 const adFormSchema = z.object({
-  requested: z.string().min(3, { message: "Lütfen en az 3 karakter girin." }).max(100, { message: "En fazla 100 karakter girebilirsiniz." }),
+  requestedBrand: z.string().min(3, { message: "Lütfen en az 3 karakter girin." }).max(100, { message: "En fazla 100 karakter girebilirsiniz." }),
+  anyBrand: z.boolean().optional(),
+  requestedQuantity: z.string().min(1, { message: "Miktar gereklidir" }),
+  requestedUnit: z.string().min(1, { message: "Birim seçimi gereklidir" }),
   offered: z.string().min(3, { message: "Lütfen en az 3 karakter girin." }).max(200, { message: "En fazla 200 karakter girebilirsiniz." }),
   message: z.string().max(500, { message: "Mesajınız en fazla 500 karakter olabilir." }).optional(),
 });
@@ -39,12 +46,16 @@ export default function CreateAdPage() {
   const { user, appUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [canPostAd, setCanPostAd] = useState<boolean | null>(null); // null initially, true/false after check
+  const [canPostAd, setCanPostAd] = useState<boolean | null>(null);
+  const [isAnyBrand, setIsAnyBrand] = useState(false);
 
   const form = useForm<AdFormValues>({
     resolver: zodResolver(adFormSchema),
     defaultValues: {
-      requested: '',
+      requestedBrand: '',
+      anyBrand: false,
+      requestedQuantity: '',
+      requestedUnit: '',
       offered: '',
       message: '',
     },
@@ -78,13 +89,26 @@ export default function CreateAdPage() {
 
   }, [user, appUser, authLoading, router]);
 
+  useEffect(() => {
+    if (isAnyBrand) {
+      form.setValue("requestedBrand", "Herhangi bir marka");
+    } else {
+      // Optionally clear the field or set to previous value if you store it
+      if (form.getValues("requestedBrand") === "Herhangi bir marka") {
+        form.setValue("requestedBrand", "");
+      }
+    }
+  }, [isAnyBrand, form]);
+
   async function onSubmit(data: AdFormValues) {
     if (!user || !appUser || !canPostAd) {
-        if (!canPostAd && canPostAd !== null) { // Avoid toast if initial check hasn't run or already shown
+        if (!canPostAd && canPostAd !== null) {
              toast.error("İlan yayınlanamadı", { description: "Aktif ilan sınırına ulaştınız." });
         }
         return;
     }
+
+    const requested = `${data.requestedQuantity} ${data.requestedUnit} ${data.requestedBrand}`;
 
     setIsSubmitting(true);
     const toastId = toast.loading("İlanınız yayınlanıyor...");
@@ -96,7 +120,9 @@ export default function CreateAdPage() {
       await addDoc(collection(db, 'ads'), {
         userId: user.uid,
         universityDomain: appUser.universityDomain,
-        ...data,
+        requested,
+        offered: data.offered,
+        message: data.message,
         createdAt: serverTimestamp(),
         expiresAt: Timestamp.fromDate(sevenDaysFromNow),
         status: 'active', 
@@ -146,22 +172,88 @@ export default function CreateAdPage() {
           ) : (
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <FormField
-                    control={form.control}
-                    name="requested"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="text-base">İstediğiniz Sigara</FormLabel>
-                        <FormControl>
-                        <Input placeholder="Örn: Marlboro Red Uzun" {...field} />
-                        </FormControl>
-                        <FormDescription className="text-xs text-muted-foreground">
-                        Hangi sigarayı arıyorsunuz? Marka ve model belirtin.
-                        </FormDescription>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+                <div className="space-y-4">
+                  <FormField
+                      control={form.control}
+                      name="requestedBrand"
+                      render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="text-base">İstediğiniz Sigara</FormLabel>
+                          <FormControl>
+                          <Input placeholder="Örn: Marlboro Red Uzun" {...field} disabled={isAnyBrand} />
+                          </FormControl>
+                          <FormDescription className="text-xs text-muted-foreground">
+                          Hangi sigarayı arıyorsunuz? Marka ve model belirtin.
+                          </FormDescription>
+                          <FormMessage />
+                      </FormItem>
+                      )}
+                  />
+                  <div className="flex items-center space-x-2">
+                    <FormField
+                      control={form.control}
+                      name="anyBrand"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                          <FormControl>
+                            <Checkbox // TODO: Uncomment and ensure component is correctly imported
+                              checked={field.value}
+                              onCheckedChange={(checked: boolean | 'indeterminate') => {
+                                field.onChange(checked === true);
+                                setIsAnyBrand(checked === true);
+                              }}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <Label htmlFor="anyBrand" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              Marka Fark Etmez
+                            </Label>
+                            <FormDescription className="text-xs text-muted-foreground">
+                              Belirli bir marka tercihin yoksa bunu işaretle.
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="flex gap-4">
+                    <FormField
+                      control={form.control}
+                      name="requestedQuantity"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel className="text-base">Miktar</FormLabel>
+                          <FormControl>
+                            <Input type="number" min="1" placeholder="Miktar" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="requestedUnit"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel className="text-base">Birim</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Birim seçin" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Dal">Dal</SelectItem>
+                              <SelectItem value="Paket">Paket</SelectItem>
+                              <SelectItem value="Karton">Karton</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
                 <FormField
                     control={form.control}
                     name="offered"
@@ -212,4 +304,4 @@ export default function CreateAdPage() {
       </Card>
     </div>
   );
-} 
+}

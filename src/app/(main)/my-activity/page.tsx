@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, Timestamp, orderBy, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, Timestamp, orderBy, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { Ad, AdResponse, AppUser, FullAdResponse, UserAdWithResponses } from '@/lib/types';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -26,6 +26,7 @@ import { toast } from 'sonner';
 import { unstable_cache as cache } from 'next/cache';
 import { fetchAdUserDetailsWithCache } from '@/lib/userCache';
 import { FirebaseError } from 'firebase/app';
+import { getUserActivityFromFirestore } from '@/lib/userActivityService';
 
 function timeAgoShort(timestamp: Timestamp | Date | undefined): string {
     if (!timestamp) return 'bilinmiyor';
@@ -44,40 +45,40 @@ function timeAgoShort(timestamp: Timestamp | Date | undefined): string {
 }
 
 // Cached function to get user ads and their responses
-const getCachedUserActivity = cache(
-  async (userId: string): Promise<UserAdWithResponses[]> => {
-    console.log(`Fetching activity for user ${userId} from Firestore...`); // Debugging
-    const adsCollectionRef = collection(db, 'ads');
-    const adsQuery = query(adsCollectionRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
-    const adsSnapshot = await getDocs(adsQuery);
-    const fetchedUserAds: Ad[] = [];
-    adsSnapshot.forEach(doc => fetchedUserAds.push({ id: doc.id, ...doc.data() } as Ad));
+// const getCachedUserActivity = cache( // This local definition is removed
+//   async (userId: string): Promise<UserAdWithResponses[]> => {
+//     console.log(`Fetching activity for user ${userId} from Firestore...`); // Debugging
+//     const adsCollectionRef = collection(db, 'ads');
+//     const adsQuery = query(adsCollectionRef, where('userId', '==', userId), orderBy('createdAt', 'desc'));
+//     const adsSnapshot = await getDocs(adsQuery);
+//     const fetchedUserAds: Ad[] = [];
+//     adsSnapshot.forEach(doc => fetchedUserAds.push({ id: doc.id, ...doc.data() } as Ad));
 
-    const populatedUserAds: UserAdWithResponses[] = [];
+//     const populatedUserAds: UserAdWithResponses[] = [];
 
-    for (const ad of fetchedUserAds) {
-      const responsesCollectionRef = collection(db, 'responses');
-      const responsesQuery = query(responsesCollectionRef, where('adId', '==', ad.id), orderBy('createdAt', 'asc'));
-      const responsesSnapshot = await getDocs(responsesQuery);
+//     for (const ad of fetchedUserAds) {
+//       const responsesCollectionRef = collection(db, 'responses');
+//       const responsesQuery = query(responsesCollectionRef, where('adId', '==', ad.id), orderBy('createdAt', 'asc'));
+//       const responsesSnapshot = await getDocs(responsesQuery);
       
-      const fetchedResponses: FullAdResponse[] = [];
-      for (const responseDoc of responsesSnapshot.docs) {
-        const responseData = { id: responseDoc.id, ...responseDoc.data() } as AdResponse;
-        let responderDetails: AppUser | undefined = undefined;
-        if (responseData.responderId) {
-          // Use the existing user cache for responder details
-          responderDetails = await fetchAdUserDetailsWithCache(responseData.responderId);
-        }
-        fetchedResponses.push({ ...responseData, responderDetails, adDetails: ad });
-      }
-      populatedUserAds.push({ ...ad, responses: fetchedResponses });
-    }
-    return populatedUserAds;
-  },
-  // Cache key generator: needs to be an array, first element is base key, then dynamic parts
-  ['user-activity'],
-  { revalidate: 120 } // Revalidate every 120 seconds
-);
+//       const fetchedResponses: FullAdResponse[] = [];
+//       for (const responseDoc of responsesSnapshot.docs) {
+//         const responseData = { id: responseDoc.id, ...responseDoc.data() } as AdResponse;
+//         let responderDetails: AppUser | undefined = undefined;
+//         if (responseData.responderId) {
+//           // Use the existing user cache for responder details
+//           responderDetails = await fetchAdUserDetailsWithCache(responseData.responderId);
+//         }
+//         fetchedResponses.push({ ...responseData, responderDetails, adDetails: ad });
+//       }
+//       populatedUserAds.push({ ...ad, responses: fetchedResponses });
+//     }
+//     return populatedUserAds;
+//   },
+//   // Cache key generator: needs to be an array, first element is base key, then dynamic parts
+//   ['user-activity'],
+//   { revalidate: 120 } // Revalidate every 120 seconds
+// );
 
 export default function MyActivityPage() {
   const { user, appUser, loading: authLoading, isEmailVerified } = useAuth();
@@ -95,19 +96,15 @@ export default function MyActivityPage() {
       if (user && isEmailVerified) {
         setIsLoading(true);
         try {
-          const response = await fetch(`/api/user-activity/${user.uid}`);
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Failed to fetch user activity from API');
-          }
-          let activityData: UserAdWithResponses[] = await response.json();
+          // Call the direct Firestore function
+          const data = await getUserActivityFromFirestore(user.uid);
 
-          // Convert Timestamps after fetching from API
-          activityData = activityData.map(userAd => ({
-            ...userAd,
-            createdAt: userAd.createdAt instanceof Timestamp ? userAd.createdAt : new Timestamp((userAd.createdAt as any).seconds, (userAd.createdAt as any).nanoseconds),
-            expiresAt: userAd.expiresAt instanceof Timestamp ? userAd.expiresAt : new Timestamp((userAd.expiresAt as any).seconds, (userAd.expiresAt as any).nanoseconds),
-            responses: userAd.responses.map(response => ({
+          // Convert plain objects back to Timestamps if necessary, or ensure your components can handle string dates
+          const processedData = data.map(ad => ({
+            ...ad,
+            createdAt: ad.createdAt instanceof Timestamp ? ad.createdAt : new Timestamp((ad.createdAt as any).seconds, (ad.createdAt as any).nanoseconds),
+            expiresAt: ad.expiresAt instanceof Timestamp ? ad.expiresAt : new Timestamp((ad.expiresAt as any).seconds, (ad.expiresAt as any).nanoseconds),
+            responses: ad.responses.map(response => ({
               ...response,
               createdAt: response.createdAt instanceof Timestamp ? response.createdAt : new Timestamp((response.createdAt as any).seconds, (response.createdAt as any).nanoseconds),
               // adDetails within response might also need timestamp conversion if it's ever set directly from API
@@ -115,7 +112,7 @@ export default function MyActivityPage() {
             })),
           }));
 
-          setUserAdsWithResponses(activityData);
+          setUserAdsWithResponses(processedData);
         } catch (err: unknown) {
           console.error("Kullanıcı hareketleri çekilirken hata (API call): ", err);
           if (err instanceof Error) {

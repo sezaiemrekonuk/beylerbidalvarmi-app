@@ -65,18 +65,24 @@ service cloud.firestore {
     // Responses Collection
     match /responses/{responseId} {
       // Only the ad owner or the responder can read a specific response.
-      allow read: if request.auth != null && 
-                  (request.auth.uid == resource.data.responderId || request.auth.uid == resource.data.adOwnerId);
+      allow read: if request.auth != null &&
+                  (
+                    (resource.data.responderId != null && request.auth.uid == resource.data.responderId) ||
+                    (resource.data.adOwnerId != null && request.auth.uid == resource.data.adOwnerId)
+                  );
       // Authenticated and email verified users can create responses to ads not their own
       allow create: if request.auth != null && request.auth.token.email_verified == true
                     && request.resource.data.responderId == request.auth.uid
+                    && request.resource.data.adOwnerId is string // Ensures adOwnerId is provided and is a string
                     && request.resource.data.adOwnerId != request.auth.uid // Cannot respond to own ad
                     && request.resource.data.adId is string
                     && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 500
                     && request.resource.data.createdAt == request.time
-                    // Check if ad exists and is not expired (optional, but good for integrity)
+                    // Check if ad exists and is not expired
                     && exists(/databases/$(database)/documents/ads/$(request.resource.data.adId))
-                    && get(/databases/$(database)/documents/ads/$(request.resource.data.adId)).data.expiresAt > request.time;
+                    && get(/databases/$(database)/documents/ads/$(request.resource.data.adId)).data.expiresAt > request.time
+                    // Verify that the adOwnerId in the response matches the actual owner of the ad
+                    && get(/databases/$(database)/documents/ads/$(request.resource.data.adId)).data.userId == request.resource.data.adOwnerId;
       // Responses are generally not updatable or deletable by users to maintain integrity
       allow update: if false;
       allow delete: if false;

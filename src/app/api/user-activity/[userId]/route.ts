@@ -44,8 +44,8 @@ const getCachedUserActivity = cache(
   { revalidate: 120 } // Revalidate every 120 seconds
 );
 
-export async function GET(request: Request, { params }: { params: { userId: string } }) {
-  const userId = params.userId;
+export async function GET(request: Request, context: { params: { userId: string } }) {
+  const userId = context.params.userId;
   if (!userId) {
     return NextResponse.json({ message: 'User ID is required' }, { status: 400 });
   }

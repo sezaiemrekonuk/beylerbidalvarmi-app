@@ -25,6 +25,7 @@ import { Ad } from '@/lib/types';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { FirebaseError } from 'firebase/app';
 
 const adFormSchema = z.object({
   requested: z.string().min(3, { message: "Lütfen en az 3 karakter girin." }).max(100, { message: "En fazla 100 karakter girebilirsiniz." }),
@@ -91,10 +92,16 @@ export default function EditAdPage() {
           toast.error("İlan Bulunamadı", { description: `ID: ${adId} olan ilan bulunamadı.`});
           setAd(null);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("İlan getirilirken hata:", err);
         setPageError("İlan bilgileri getirilirken bir hata oluştu.");
-        toast.error("Veri Çekme Hatası", { description: "İlan bilgileri getirilirken bir sorun oluştu." });
+        if (err instanceof FirebaseError) {
+            toast.error("Veri Çekme Hatası", { description: err.message || "İlan bilgileri getirilirken bir sorun oluştu." });
+        } else if (err instanceof Error) {
+            toast.error("Veri Çekme Hatası", { description: err.message || "İlan bilgileri getirilirken bir sorun oluştu." });
+        } else {
+            toast.error("Veri Çekme Hatası", { description: "İlan bilgileri getirilirken bilinmeyen bir sorun oluştu." });
+        }
         setAd(null);
       }
       setIsLoadingAd(false);
@@ -123,9 +130,15 @@ export default function EditAdPage() {
       });
       toast.success("İlan başarıyla güncellendi!", { id: toastId });
       router.push('/'); 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("İlan güncellenirken hata:", err);
-      toast.error("Güncelleme Hatası", { id: toastId, description: err.message || "İlan güncellenirken bir hata oluştu." });
+      if (err instanceof FirebaseError) {
+        toast.error("Güncelleme Hatası", { id: toastId, description: err.message || "İlan güncellenirken bir hata oluştu." });
+      } else if (err instanceof Error) {
+        toast.error("Güncelleme Hatası", { id: toastId, description: err.message || "İlan güncellenirken bir hata oluştu." });
+      } else {
+        toast.error("Güncelleme Hatası", { id: toastId, description: "İlan güncellenirken bilinmeyen bir hata oluştu." });
+      }
     }
     setIsUpdating(false);
   };

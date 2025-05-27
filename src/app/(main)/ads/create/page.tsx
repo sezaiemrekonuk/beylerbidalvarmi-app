@@ -24,6 +24,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
+import { FirebaseError } from 'firebase/app';
 
 const adFormSchema = z.object({
   requested: z.string().min(3, { message: "Lütfen en az 3 karakter girin." }).max(100, { message: "En fazla 100 karakter girebilirsiniz." }),
@@ -102,9 +103,15 @@ export default function CreateAdPage() {
       });
       toast.success("İlan başarıyla yayınlandı!", { id: toastId });
       router.push('/');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("İlan oluşturulurken hata:", error);
-      toast.error("İlan yayınlanırken bir hata oluştu.", { id: toastId, description: error.message });
+      if (error instanceof FirebaseError) {
+        toast.error("İlan yayınlanırken bir hata oluştu.", { id: toastId, description: error.message });
+      } else if (error instanceof Error) {
+        toast.error("İlan yayınlanırken bir hata oluştu.", { id: toastId, description: error.message });
+      } else {
+        toast.error("İlan yayınlanırken beklenmedik bir hata oluştu.", { id: toastId });
+      }
     }
     setIsSubmitting(false);
   }

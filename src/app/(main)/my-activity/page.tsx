@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, getDoc, Timestamp, orderBy, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, Timestamp, orderBy, deleteDoc } from 'firebase/firestore';
 import { Ad, AdResponse, AppUser, FullAdResponse, UserAdWithResponses } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,6 +25,7 @@ import AdCard from '@/components/ads/AdCard';
 import { toast } from 'sonner';
 import { unstable_cache as cache } from 'next/cache';
 import { fetchAdUserDetailsWithCache } from '@/lib/userCache';
+import { FirebaseError } from 'firebase/app';
 
 function timeAgoShort(timestamp: Timestamp | Date | undefined): string {
     if (!timestamp) return 'bilinmiyor';
@@ -115,9 +116,13 @@ export default function MyActivityPage() {
           }));
 
           setUserAdsWithResponses(activityData);
-        } catch (err: any) {
+        } catch (err: unknown) {
           console.error("Kullanıcı hareketleri çekilirken hata (API call): ", err);
-          toast.error("Hareketler Yüklenemedi", { description: "Verileriniz yüklenirken bir sorun oluştu." });
+          if (err instanceof Error) {
+            toast.error("Hareketler Yüklenemedi", { description: err.message || "Verileriniz yüklenirken bir sorun oluştu." });
+          } else {
+            toast.error("Hareketler Yüklenemedi", { description: "Verileriniz yüklenirken bilinmeyen bir sorun oluştu." });
+          }
         }
         setIsLoading(false);
       }
@@ -146,9 +151,15 @@ export default function MyActivityPage() {
       setUserAdsWithResponses(prevAds => prevAds.filter(ad => ad.id !== adToDeleteId));
       setIsDeleteAlertOpen(false);
       setAdToDeleteId(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("İlan silinirken hata:", err);
-      toast.error("Silme Başarısız", { id: toastId, description: err.message || "İlan silinemedi." });
+      if (err instanceof FirebaseError) {
+        toast.error("Silme Başarısız", { id: toastId, description: err.message || "İlan silinemedi." });
+      } else if (err instanceof Error) {
+        toast.error("Silme Başarısız", { id: toastId, description: err.message || "İlan silinemedi." });
+      } else {
+        toast.error("Silme Başarısız", { id: toastId, description: "İlan silinirken bilinmeyen bir hata oluştu." });
+      }
     }
     setIsDeletingAd(false);
   };

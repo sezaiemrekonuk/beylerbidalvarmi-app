@@ -20,6 +20,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FirebaseError } from 'firebase/app';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Geçersiz e-posta adresi.' }),
@@ -51,8 +52,12 @@ export default function LoginPage() {
                 try {
                     await sendEmailVerification(userCredential.user);
                     toast.success("Doğrulama e-postası tekrar gönderildi.");
-                } catch (e: any) {
-                    toast.error("Doğrulama e-postası gönderilemedi.", { description: e.message });
+                } catch (e: unknown) {
+                    if (e instanceof FirebaseError) {
+                        toast.error("Doğrulama e-postası gönderilemedi.", { description: e.message });
+                    } else {
+                        toast.error("Doğrulama e-postası gönderilemedi.", { description: "Bilinmeyen bir hata oluştu." });
+                    }
                 }
             }
           },
@@ -63,11 +68,15 @@ export default function LoginPage() {
       }
       toast.success("Giriş başarılı! Yönlendiriliyorsunuz...");
       router.push('/'); 
-    } catch (error: any) {
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-            toast.error('E-posta veya şifre hatalı.', { description: 'Lütfen bilgilerinizi kontrol edin ve tekrar deneyin.'});
+    } catch (error: unknown) {
+        if (error instanceof FirebaseError) {
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                toast.error('E-posta veya şifre hatalı.', { description: 'Lütfen bilgilerinizi kontrol edin ve tekrar deneyin.'});
+            } else {
+                toast.error('Giriş yapılırken bir hata oluştu.', { description: error.message || 'Lütfen tekrar deneyin.' });
+            }
         } else {
-            toast.error('Giriş yapılırken bir hata oluştu.', { description: error.message || 'Lütfen tekrar deneyin.' });
+            toast.error('Giriş yapılırken beklenmedik bir hata oluştu.', { description: 'Lütfen tekrar deneyin.' });
         }
     }
     setLoading(false);

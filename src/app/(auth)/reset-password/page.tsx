@@ -20,6 +20,7 @@ import { sendPasswordResetEmail } from 'firebase/auth';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { FirebaseError } from 'firebase/app';
 
 const resetPasswordSchema = z.object({
   email: z.string().email({ message: "Geçerli bir e-posta adresi giriniz." }),
@@ -45,11 +46,15 @@ export default function ResetPasswordPage() {
         description: 'Lütfen gelen kutunuzu ve spam klasörünüzü kontrol edin.',
       });
       form.reset(); 
-    } catch (err: any) {
-      if (err.code === 'auth/user-not-found') {
-        toast.error('Kullanıcı bulunamadı.', { description: 'Bu e-posta adresi ile kayıtlı bir kullanıcı bulunamadı.'});
+    } catch (err: unknown) {
+      if (err instanceof FirebaseError) {
+        if (err.code === 'auth/user-not-found') {
+          toast.error('Kullanıcı bulunamadı.', { description: 'Bu e-posta adresi ile kayıtlı bir kullanıcı bulunamadı.'});
+        } else {
+          toast.error('Şifre sıfırlama e-postası gönderilemedi.', { description: err.message || 'Lütfen tekrar deneyin.'});
+        }
       } else {
-        toast.error('Şifre sıfırlama e-postası gönderilemedi.', { description: err.message || 'Lütfen tekrar deneyin.'});
+        toast.error('Şifre sıfırlama sırasında beklenmedik bir hata oluştu.', { description: 'Lütfen tekrar deneyin.'});
       }
       console.error("Şifre sıfırlama hatası:", err);
     }

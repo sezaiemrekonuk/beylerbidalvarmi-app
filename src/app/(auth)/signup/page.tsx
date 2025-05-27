@@ -22,6 +22,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FirebaseError } from 'firebase/app';
 
 const phoneRegex = new RegExp(
   /^(\+90|0)?\s*?(\d{3})\s*?(\d{3})\s*?(\d{2})\s*?(\d{2})$/
@@ -78,14 +79,18 @@ export default function SignupPage() {
       });
       
       router.push('/login');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Kayıt sırasında hata:", error);
-      if (error.code === 'auth/email-already-in-use') {
-        toast.error('Bu e-posta adresi zaten kayıtlı.');
+      if (error instanceof FirebaseError) {
+        if (error.code === 'auth/email-already-in-use') {
+          toast.error('Bu e-posta adresi zaten kayıtlı.');
+        } else {
+          toast.error('Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.', {
+              description: error.message
+          });
+        }
       } else {
-        toast.error('Kayıt sırasında bir hata oluştu. Lütfen tekrar deneyin.', {
-            description: error.message
-        });
+        toast.error('Kayıt sırasında beklenmedik bir hata oluştu. Lütfen tekrar deneyin.');
       }
     }
     setLoading(false);

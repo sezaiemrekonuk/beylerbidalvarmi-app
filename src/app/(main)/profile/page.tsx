@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -74,7 +74,7 @@ export default function ProfilePage() {
     }
   };
 
-  const handlePhotoUpload = async () => {
+  const handlePhotoUpload = useCallback(async () => {
     if (!profilePhoto || !user) return;
     setIsUploading(true);
     const toastId = toast.loading("Profil fotoğrafı yükleniyor...");
@@ -88,7 +88,7 @@ export default function ProfilePage() {
       if(auth.currentUser) {
         await updateAuthProfile(auth.currentUser, { photoURL });
       }
-      await refreshAppUser(); 
+      await refreshAppUser();
       setPhotoPreview(photoURL);
       setProfilePhoto(null);
       toast.success("Profil fotoğrafı başarıyla güncellendi.", { id: toastId });
@@ -97,7 +97,13 @@ export default function ProfilePage() {
       toast.error("Fotoğraf yüklenirken bir hata oluştu.", { id: toastId, description: error.message });
     }
     setIsUploading(false);
-  };
+  }, [user, profilePhoto, refreshAppUser, setIsUploading, setPhotoPreview, setProfilePhoto, db, storage, auth]);
+
+  useEffect(() => {
+    if (profilePhoto) {
+      handlePhotoUpload();
+    }
+  }, [profilePhoto, handlePhotoUpload]);
 
   async function onSubmit(values: ProfileFormValues) {
     if (!user) return;
@@ -149,11 +155,6 @@ export default function ProfilePage() {
                         </Label>
                     </div>
                     <Input id="profilePhotoInput" type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
-                    {profilePhoto && (
-                        <Button onClick={handlePhotoUpload} disabled={isUploading} className="w-full sm:w-auto bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                        {isUploading ? 'Yükleniyor...' : 'Fotoğrafı Yükle'}
-                        </Button>
-                    )}
                     <div className="text-center w-full pt-4 md:pt-0">
                         <p className="text-sm font-medium text-muted-foreground">E-posta</p>
                         <p className="text-md text-foreground break-all">{appUser.email}</p>

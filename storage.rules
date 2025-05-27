@@ -1,0 +1,20 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Profile Photos: /profile_photos/{userId}/{timestamp}_{fileName}
+    // Note: The {imageName} wildcard should be flexible enough for typical filenames.
+    // If your filenames are just {timestamp}_{fileName}, then this works.
+    // If you have subfolders *within* a userId folder that also need protection, adjust accordingly.
+    match /profile_photos/{userId}/{imageName} {
+      // Allow read by anyone (if profile photos are public)
+      allow read: if true; 
+      // Allow write (create, update, delete) only by the authenticated user for their own path
+      allow write: if request.auth != null && request.auth.uid == userId
+                   // Restrict file size (e.g., max 2MB)
+                   && request.resource.size < 2 * 1024 * 1024
+                   // Restrict content type to images
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+} 

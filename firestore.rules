@@ -1,0 +1,102 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users Collection
+    match /users/{userId} {
+      // Anyone can read basic user profile info (name, university, photo)
+      allow read: if true;
+      // Only the authenticated user can create their own profile document initially
+      allow create: if request.auth != null && request.auth.uid == userId
+                    && request.resource.data.name is string
+                    && request.resource.data.email == request.auth.token.email
+                    // .edu.tr check is primarily client-side, but can add regex here if desired
+                    && request.resource.data.universityDomain is string 
+                    && request.resource.data.phone is string
+                    && request.resource.data.profilePhotoUrl == null // Initial photo is null
+                    && request.resource.data.createdAt == request.time; // Server timestamp
+      // Only the authenticated user can update their own profile
+      allow update: if request.auth != null && request.auth.uid == userId
+                    && request.resource.data.name is string
+                    && request.resource.data.phone is string
+                    // Prevent changing email, universityDomain, or emailVerified status via direct update
+                    && request.resource.data.email == resource.data.email 
+                    && request.resource.data.universityDomain == resource.data.universityDomain
+                    && (!('emailVerified' in request.resource.data) || request.resource.data.emailVerified == resource.data.emailVerified); 
+                    // profilePhotoUrl is updatable
+                    // createdAt should not be updatable after creation
+      // No user should be able to delete their profile through the app directly
+      allow delete: if false; 
+    }
+
+    // Ads Collection
+    match /ads/{adId} {
+      // Anyone can read ads
+      allow read: if true;
+      // Authenticated users can create ads if they are email verified
+      allow create: if request.auth != null && request.auth.token.email_verified == true
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.universityDomain == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.universityDomain
+                    && request.resource.data.requested is string && request.resource.data.requested.size() > 2 && request.resource.data.requested.size() <= 100
+                    && request.resource.data.offered is string && request.resource.data.offered.size() > 2 && request.resource.data.offered.size() <= 200
+                    && (request.resource.data.message == null || (request.resource.data.message is string && request.resource.data.message.size() <= 500))
+                    && request.resource.data.createdAt == request.time
+                    && request.resource.data.expiresAt is timestamp // Ensure it's a timestamp
+                    && request.resource.data.status == 'active';
+      // Only the ad owner can update their non-expired ad, and they must be email verified
+      allow update: if request.auth != null && request.auth.token.email_verified == true
+                    && resource.data.userId == request.auth.uid
+                    && resource.data.expiresAt > request.time // Can only update non-expired ads
+                    && request.resource.data.requested is string && request.resource.data.requested.size() > 2 && request.resource.data.requested.size() <= 100
+                    && request.resource.data.offered is string && request.resource.data.offered.size() > 2 && request.resource.data.offered.size() <= 200
+                    && (request.resource.data.message == null || (request.resource.data.message is string && request.resource.data.message.size() <= 500))
+                    // Prevent changing critical fields like userId, universityDomain, createdAt, expiresAt (except by server/trusted function if needed for extension)
+                    && request.resource.data.userId == resource.data.userId
+                    && request.resource.data.universityDomain == resource.data.universityDomain
+                    && request.resource.data.createdAt == resource.data.createdAt
+                    && request.resource.data.expiresAt == resource.data.expiresAt
+                    && request.resource.data.status == resource.data.status // Status might be changed by trusted functions later if implemented
+                    && request.resource.data.updatedAt == request.time;
+      // Only the ad owner can delete their ad
+      allow delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+
+    // Responses Collection
+    match /responses/{responseId} {
+      // Only the ad owner or the responder can read a specific response.
+      allow read: if request.auth != null && 
+                  (request.auth.uid == resource.data.responderId || request.auth.uid == resource.data.adOwnerId);
+      // Authenticated and email verified users can create responses to ads not their own
+      allow create: if request.auth != null && request.auth.token.email_verified == true
+                    && request.resource.data.responderId == request.auth.uid
+                    && request.resource.data.adOwnerId != request.auth.uid // Cannot respond to own ad
+                    && request.resource.data.adId is string
+                    && request.resource.data.message is string && request.resource.data.message.size() > 0 && request.resource.data.message.size() <= 500
+                    && request.resource.data.createdAt == request.time
+                    // Check if ad exists and is not expired (optional, but good for integrity)
+                    && exists(/databases/$(database)/documents/ads/$(request.resource.data.adId))
+                    && get(/databases/$(database)/documents/ads/$(request.resource.data.adId)).data.expiresAt > request.time;
+      // Responses are generally not updatable or deletable by users to maintain integrity
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Reports Collection
+    match /reports/{reportId} {
+      // Users should not be able to read others' reports or their own after submission.
+      allow read: if false; 
+      // Authenticated and email verified users can create reports
+      allow create: if request.auth != null && request.auth.token.email_verified == true
+                    && request.resource.data.reporterId == request.auth.uid
+                    && request.resource.data.reportedUserId is string 
+                    && request.resource.data.reportedUserId != request.auth.uid // Cannot report self
+                    && (request.resource.data.adId == null || request.resource.data.adId is string)
+                    && request.resource.data.reason is string && request.resource.data.reason.size() > 0
+                    && request.resource.data.createdAt == request.time;
+      // Reports are not updatable or deletable by users
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+} 

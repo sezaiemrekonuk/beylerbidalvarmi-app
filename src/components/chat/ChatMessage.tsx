@@ -29,7 +29,7 @@ export function ChatMessage({ message, isCurrentUser }: ChatMessageProps) {
         {!isCurrentUser && <p className="font-semibold mb-1">{message.sender.name}</p>}
         <p>{message.text}</p>
         <p className={cn("text-xs mt-1", isCurrentUser ? "text-primary-foreground/70" : "text-muted-foreground/70")}>
-          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          {message.timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
       </div>
       {isCurrentUser && (
